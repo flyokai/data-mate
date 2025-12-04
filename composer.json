@@ -1,0 +1,20 @@
+{
+    "name": "flyokai/data-mate",
+    "description": "Data/Dto helpers and base definitions",
+    "require": {
+        "amphp/serialization": "^1",
+        "cuyz/valinor": "^1"
+    },
+    "license": [
+        "MIT"
+    ],
+    "autoload": {
+        "files": [
+            "src/functions/misc.php",
+            "src/functions/valinor.php"
+        ],
+        "psr-4": {
+            "Flyokai\\DataMate\\": "src/"
+        }
+    }
+}

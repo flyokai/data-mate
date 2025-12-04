@@ -56,7 +56,7 @@ function buildDtoMapper(
 }
 
 function dtoNormalizer(
-    Format $format = null
+    ?Format $format = null
 ): Normalizer
 {
     $format = $format ?? Format::array();
@@ -66,7 +66,7 @@ function dtoNormalizer(
 }
 
 function buildDtoNormalizer(
-    Format $format = null,
+    ?Format $format = null,
 ): Normalizer
 {
     $mapperBuilder = (new MapperBuilder);

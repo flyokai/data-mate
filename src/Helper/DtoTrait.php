@@ -84,8 +84,14 @@ trait DtoTrait
                         sprintf('Unsupported property "%s" of "%s"', $__name, get_class($value))
                     );
                 }
-            } elseif (is_scalar($value) || is_array($value) || is_null($value)) {
+            } elseif (is_scalar($value) || is_null($value)) {
                 $array[$__name] = $value;
+            } elseif (is_array($value)) {
+                $array[$__name] = [];
+                foreach ($value as $__vk => $__vv) {
+                    $array[$__name][$__vk] = is_object($__vv) && method_exists($__vv, 'toArray')
+                        ? $__vv->toArray($skipUnsupported) : $__vv;
+                }
             }
         }
         return $array;

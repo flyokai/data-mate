@@ -4,9 +4,9 @@ namespace Flyokai\DataMate\Helper;
 
 trait Solid
 {
-    public function toFragile(?\CuyZ\Valinor\Mapper\TreeMapper $mapper = null): \Flyokai\DataMate\Dto
+    public function toDraft(?\CuyZ\Valinor\Mapper\TreeMapper $mapper = null): \Flyokai\DataMate\Dto
     {
-        return call_user_func([$this->fragileClassName, 'fromArray'], $this->toArray());
+        return call_user_func([$this->draftClassName, 'fromArray'], $this->toArray());
     }
 
 }

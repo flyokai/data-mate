@@ -2,10 +2,10 @@
 
 namespace Flyokai\DataMate\Helper;
 
+/**
+ * @deprecated Use {@see Draft} instead. Will be removed in a future version.
+ */
 trait Fragile
 {
-    public function toSolid(?\CuyZ\Valinor\Mapper\TreeMapper $mapper = null): \Flyokai\DataMate\Dto
-    {
-        return call_user_func([$this->solidClassName, 'fromArray'], $this->toArray());
-    }
+    use Draft;
 }

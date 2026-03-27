@@ -2,9 +2,9 @@
 
 namespace Flyokai\DataMate;
 
-use CuyZ\Valinor\Mapper\TreeMapper;
-
-interface Fragile
+/**
+ * @deprecated Use {@see Draft} instead. Will be removed in a future version.
+ */
+interface Fragile extends Draft
 {
-    public function toSolid(?TreeMapper $mapper = null): Dto;
 }

@@ -6,5 +6,5 @@ use CuyZ\Valinor\Mapper\TreeMapper;
 
 interface Solid
 {
-    public function toFragile(?TreeMapper $mapper = null): Dto;
+    public function toDraft(?TreeMapper $mapper = null): Dto;
 }

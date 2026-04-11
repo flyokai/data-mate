@@ -51,7 +51,52 @@ trait DtoTrait
 
     public static function tuneDbRow(array $dbRow): array
     {
+        return self::tuneDbRowJsonColumns(static::class, $dbRow);
+    }
+
+    /**
+     * Decode columns on an inbound DB row whose constructor parameter carries
+     * #[\Flyokai\DataMate\Attribute\Json]. The JSON string is json_decode'd to
+     * an associative array; Valinor (via fromArray -> dtoMapper) then maps the
+     * array into the declared target class.
+     *
+     * Parameters without #[Json] are left untouched so DTOs that have not yet
+     * migrated to the attribute keep their current behavior (including any
+     * manual json_decode in concrete tuneDbRow() overrides).
+     */
+    protected static function tuneDbRowJsonColumns(string $class, array $dbRow): array
+    {
+        foreach (self::jsonColumns($class) as $property) {
+            if (!array_key_exists($property, $dbRow)) continue;
+            $value = $dbRow[$property];
+            if (!is_string($value)) continue;
+            if ($value === '') {
+                $dbRow[$property] = null;
+                continue;
+            }
+            $dbRow[$property] = json_decode($value, true, flags: JSON_THROW_ON_ERROR);
+        }
         return $dbRow;
+    }
+
+    /**
+     * @return string[] names of constructor parameters tagged with #[Json]
+     */
+    private static function jsonColumns(string $class): array
+    {
+        /** @var array<class-string, string[]> */
+        static $cache = [];
+        if (!isset($cache[$class])) {
+            $names = [];
+            foreach (self::parameters($class) as $parameter) {
+                $attrs = $parameter->getAttributes(\Flyokai\DataMate\Attribute\Json::class);
+                if ($attrs) {
+                    $names[] = $parameter->getName();
+                }
+            }
+            $cache[$class] = $names;
+        }
+        return $cache[$class];
     }
 
     public function toDbRow(): array

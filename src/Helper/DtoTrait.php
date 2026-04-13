@@ -6,6 +6,46 @@ use function Flyokai\DataMate\dtoMapper;
 
 trait DtoTrait
 {
+    private array $__extensions = [];
+
+    /**
+     * @template T of \Flyokai\DataMate\Dto
+     * @param class-string<T> $extensionClass
+     * @return T|null
+     */
+    public function getExtension(string $extensionClass): ?\Flyokai\DataMate\Dto
+    {
+        return $this->__extensions[$extensionClass] ?? null;
+    }
+
+    /**
+     * @param class-string<\Flyokai\DataMate\Dto> $extensionClass
+     */
+    public function withExtension(string $extensionClass, \Flyokai\DataMate\Dto $extension): static
+    {
+        $clone = clone $this;
+        $clone->__extensions[$extensionClass] = $extension;
+        return $clone;
+    }
+
+    /**
+     * @param array<class-string<\Flyokai\DataMate\Dto>, \Flyokai\DataMate\Dto> $extensions
+     */
+    public function withExtensions(array $extensions): static
+    {
+        $clone = clone $this;
+        $clone->__extensions = array_merge($clone->__extensions, $extensions);
+        return $clone;
+    }
+
+    /**
+     * @return array<class-string<\Flyokai\DataMate\Dto>, \Flyokai\DataMate\Dto>
+     */
+    public function extensions(): array
+    {
+        return $this->__extensions;
+    }
+
     /**
      * @return class-string
      */
@@ -34,7 +74,11 @@ trait DtoTrait
                 }
             }
         };
-        return $clone ? new static(...$args) : static::fromArray($args);
+        $result = $clone ? new static(...$args) : static::fromArray($args);
+        if (!empty($this->__extensions)) {
+            $result->__extensions = $this->__extensions;
+        }
+        return $result;
     }
 
     public function children(bool $skipUndefined=true): array
@@ -181,10 +225,14 @@ trait DtoTrait
 
     public function __sleep(): array
     {
-        return array_map(
+        $props = array_map(
             fn (\ReflectionParameter $parameter) => $parameter->name,
             self::parameters(static::class)
         );
+        if (!empty($this->__extensions)) {
+            $props[] = '__extensions';
+        }
+        return $props;
     }
 
     private static function reflector($class)

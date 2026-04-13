@@ -6,6 +6,10 @@ trait Draft
 {
     public function toSolid(?\CuyZ\Valinor\Mapper\TreeMapper $mapper = null): \Flyokai\DataMate\Dto
     {
-        return call_user_func([$this->solidClassName, 'fromArray'], $this->toArray());
+        $solid = call_user_func([$this->solidClassName, 'fromArray'], $this->toArray());
+        if (!empty($this->extensions())) {
+            $solid = $solid->withExtensions($this->extensions());
+        }
+        return $solid;
     }
 }

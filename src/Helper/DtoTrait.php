@@ -1,0 +1,257 @@
+<?php
+
+namespace Flyokai\DataMate\Helper;
+
+use function Flyokai\DataMate\dtoMapper;
+
+trait DtoTrait
+{
+    private array $__extensions = [];
+
+    /**
+     * @template T of \Flyokai\DataMate\Dto
+     * @param class-string<T> $extensionClass
+     * @return T|null
+     */
+    public function getExtension(string $extensionClass): ?\Flyokai\DataMate\Dto
+    {
+        return $this->__extensions[$extensionClass] ?? null;
+    }
+
+    /**
+     * @param class-string<\Flyokai\DataMate\Dto> $extensionClass
+     */
+    public function withExtension(string $extensionClass, \Flyokai\DataMate\Dto $extension): static
+    {
+        $clone = clone $this;
+        $clone->__extensions[$extensionClass] = $extension;
+        return $clone;
+    }
+
+    /**
+     * @param array<class-string<\Flyokai\DataMate\Dto>, \Flyokai\DataMate\Dto> $extensions
+     */
+    public function withExtensions(array $extensions): static
+    {
+        $clone = clone $this;
+        $clone->__extensions = array_merge($clone->__extensions, $extensions);
+        return $clone;
+    }
+
+    /**
+     * @return array<class-string<\Flyokai\DataMate\Dto>, \Flyokai\DataMate\Dto>
+     */
+    public function extensions(): array
+    {
+        return $this->__extensions;
+    }
+
+    /**
+     * @return class-string
+     */
+    public function className(): string
+    {
+        return static::class;
+    }
+
+    public function cloneWith(...$args): static
+    {
+        return $this->_with(true, ...$args);
+    }
+
+    public function with(...$args): static
+    {
+        return $this->_with(false, ...$args);
+    }
+
+    protected function _with(bool $clone, ...$args): static
+    {
+        foreach (self::parameters(static::class) as $parameter) {
+            $__name = $parameter->getName();
+            if (!$this->isUndefined($__name) && property_exists($this, $__name)) {
+                if (!array_key_exists($__name, $args)) {
+                    $args[$__name] = $this->{$__name}??null;
+                }
+            }
+        };
+        $result = $clone ? new static(...$args) : static::fromArray($args);
+        if (!empty($this->__extensions)) {
+            $result->__extensions = $this->__extensions;
+        }
+        return $result;
+    }
+
+    public function children(bool $skipUndefined=true): array
+    {
+        $array = [];
+        foreach (self::parameters(static::class) as $parameter) {
+            $__name = $parameter->getName();
+            if ($this->isUndefined($__name) && $skipUndefined) continue;
+            if (!property_exists($this, $__name)) continue;
+            $array[$__name] = $this->{$__name};
+        }
+        return $array;
+    }
+
+    public static function tuneDbRow(array $dbRow): array
+    {
+        return self::tuneDbRowJsonColumns(static::class, $dbRow);
+    }
+
+    /**
+     * Decode columns on an inbound DB row whose constructor parameter carries
+     * #[\Flyokai\DataMate\Attribute\Json]. The JSON string is json_decode'd to
+     * an associative array; Valinor (via fromArray -> dtoMapper) then maps the
+     * array into the declared target class.
+     *
+     * Parameters without #[Json] are left untouched so DTOs that have not yet
+     * migrated to the attribute keep their current behavior (including any
+     * manual json_decode in concrete tuneDbRow() overrides).
+     */
+    protected static function tuneDbRowJsonColumns(string $class, array $dbRow): array
+    {
+        foreach (self::jsonColumns($class) as $property) {
+            if (!array_key_exists($property, $dbRow)) continue;
+            $value = $dbRow[$property];
+            if (!is_string($value)) continue;
+            if ($value === '') {
+                $dbRow[$property] = null;
+                continue;
+            }
+            $dbRow[$property] = json_decode($value, true, flags: JSON_THROW_ON_ERROR);
+        }
+        return $dbRow;
+    }
+
+    /**
+     * @return string[] names of constructor parameters tagged with #[Json]
+     */
+    private static function jsonColumns(string $class): array
+    {
+        /** @var array<class-string, string[]> */
+        static $cache = [];
+        if (!isset($cache[$class])) {
+            $names = [];
+            foreach (self::parameters($class) as $parameter) {
+                $attrs = $parameter->getAttributes(\Flyokai\DataMate\Attribute\Json::class);
+                if ($attrs) {
+                    $names[] = $parameter->getName();
+                }
+            }
+            $cache[$class] = $names;
+        }
+        return $cache[$class];
+    }
+
+    public function toDbRow(): array
+    {
+        $dbRow = $this->toArray();
+        foreach ($dbRow as $key => &$value) {
+            if (is_array($value)) {
+                $value = json_encode($value, JSON_THROW_ON_ERROR);
+            }
+        }
+        unset($value);
+        return $dbRow;
+    }
+
+    public function toArray(bool $skipUnsupported = false): array
+    {
+        $array = [];
+        foreach (self::parameters(static::class) as $parameter) {
+            $__name = $parameter->getName();
+            if (!property_exists($this, $__name)) continue;
+            if ($this->isUndefined($__name)) continue;
+            $value = $this->{$__name};
+            if (is_object($value)) {
+                if ($value instanceof \BackedEnum) {
+                    $array[$__name] = $value->value;
+                } elseif (method_exists($value, 'toArray')) {
+                    $array[$__name] = $value->toArray();
+                } elseif (!$skipUnsupported) {
+                    throw new \RuntimeException(
+                        sprintf('Unsupported property "%s" of "%s"', $__name, get_class($value))
+                    );
+                }
+            } elseif (is_scalar($value) || is_null($value)) {
+                $array[$__name] = $value;
+            } elseif (is_array($value)) {
+                $array[$__name] = [];
+                foreach ($value as $__vk => $__vv) {
+                    $array[$__name][$__vk] = is_object($__vv) && method_exists($__vv, 'toArray')
+                        ? $__vv->toArray($skipUnsupported) : $__vv;
+                }
+            }
+        }
+        return $array;
+    }
+
+    protected array $undefined = [];
+    public function isUndefined(string $parameter, ?bool $flag=null): bool
+    {
+        $isUndefined = array_key_exists($parameter, $this->undefined);
+        if ($flag !== null) {
+            if ($flag) {
+                $this->undefined[$parameter] = $isUndefined;
+            } else {
+                unset($this->undefined[$parameter]);
+            }
+        }
+        return $isUndefined;
+    }
+
+    public static function fromArray(array $array): static
+    {
+        $undefined = [];
+        foreach (self::parameters(static::class) as $parameter) {
+            if (!array_key_exists($parameter->getName(), $array)
+                && $parameter->allowsNull()
+            ) {
+                $undefined[] = $parameter->getName();
+            }
+        };
+        $dto = dtoMapper(allowSuperfluousKeys: true)->map(
+            static::class,
+            $array
+        );
+        $dto->undefined = array_flip($undefined);
+        return $dto;
+    }
+
+    public static function fromArgs(...$args): static
+    {
+        return static::fromArray($args);
+    }
+
+    public function __sleep(): array
+    {
+        $props = array_map(
+            fn (\ReflectionParameter $parameter) => $parameter->name,
+            self::parameters(static::class)
+        );
+        if (!empty($this->__extensions)) {
+            $props[] = '__extensions';
+        }
+        return $props;
+    }
+
+    private static function reflector($class)
+    {
+        static $reflectorCache = [];
+        if (!isset($reflectorCache[$class])) {
+            $reflectorCache[$class] = new \ReflectionClass($class);
+        }
+        return $reflectorCache[$class];
+    }
+
+    private static function parameters($class)
+    {
+        /** @var array<class-string, \ReflectionParameter[]> */
+        static $ctorParametersCache = [];
+        if (!isset($ctorParametersCache[$class])) {
+            $ctorParametersCache[$class] = self::reflector($class)
+                ->getConstructor()?->getParameters() ?? [];
+        }
+        return $ctorParametersCache[$class];
+    }
+}
